@@ -1,31 +1,29 @@
 import NoobECS
 
-public protocol ComponentCategory: Hashable, Comparable {}
+public protocol Category: Hashable, Comparable {}
 
 public protocol CategoryComponent: Component {
-    associatedtype Categories: ComponentCategory
-
-    static var placeholder: Self { get }
+    associatedtype Categories: Category
 }
 
 public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
+
     public typealias StoreOptions = C.Categories
     public typealias ComponentIdentifier = Int
     public typealias StoredComponent = C
 
     public let type: OpaqueComponent.Type = C.self
-    public var buffer: [C] = []
+    public var buffer: [StoreItem<C>?] = []
     public var category: [C.Categories: Range<Int>] = [:]
 
-    private var categoryFriedIndicies: [C.Categories: [Int]] = [:]
+    private(set) var categoryFreedIndicies: [C.Categories: [Int]] = [:]
 
     public init() { }
 
-    public func allocInit(for entity: Entity, options: StoreOptions, with arguments: StoredComponent.InitArguments) throws -> ComponentIdentifier {
-        let new = try C.init(entity: entity, arguments: arguments)
-        
-        if let allocated = categoryFriedIndicies[options]?.popLast() {
-            buffer[allocated] = new
+
+    public func store(item: StoreItem<C>, with options: C.Categories) throws -> Int {
+        if let allocated = categoryFreedIndicies[options]?.popLast() {
+            buffer[allocated] = item
             return allocated
         }
 
@@ -51,17 +49,17 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         // At this point we know how will the new category look like, we shall insert it and move space
         self.category[options] = newRange
         if myIndex == sortedCategories.count - 1 {
-            buffer.append(new)
+            buffer.append(item)
             return buffer.count - 1
         } else {
             recursiveFree(fist: 1, category: sortedCategories[myIndex + 1].key)
-            buffer[newRange.upperBound - 1] = new
+            buffer[newRange.upperBound - 1] = item
             return newRange.upperBound - 1
         }
     }
 
     public func access<R>(at identifier: inout Any, validityScope: (inout StoredComponent) throws -> R) rethrows -> R? {
-        try validityScope(&buffer[identifier as! ComponentIdentifier])
+        try validityScope(&buffer[identifier as! ComponentIdentifier]!.value)
     }
 
     public func initialize(categories: [C.Categories: Int], reserve tail: Int, addToExisting: Bool = false) {
@@ -87,7 +85,7 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
         // Initialize required space
         buffer.append(contentsOf: Array(
-            repeating: C.placeholder, 
+            repeating: nil, 
             count: max(0, initializedSpace - buffer.count)
         ))
 
@@ -100,7 +98,7 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
             guard let currentSpace = self.category[category] else {
                 self.category[category] = newRange
-                self.categoryFriedIndicies[category] = Array(newRange)
+                self.categoryFreedIndicies[category] = Array(newRange)
                 continue
             }
 
@@ -113,11 +111,11 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
     public func destroy(at index: Int) {
         if let category = categoryOf(index: index) {
-            categoryFriedIndicies[category, default: []].append(index)
+            categoryFreedIndicies[category, default: []].append(index)
         }
 
-        buffer[index].destroy()
-        buffer[index].entity = nil
+        buffer[index]!.value.destroy()
+        buffer[index] = nil
     }
 
     public func categoryOf(index: Int) -> C.Categories? {
@@ -128,7 +126,7 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         let sortedCategories = self.category.sorted { $0.key < $1.key }
         let myIndex = sortedCategories.firstIndex { $0.key == category }!
         let currentRange = sortedCategories[myIndex].value
-        let freeIndicies = categoryFriedIndicies[category] ?? []
+        let freeIndicies = categoryFreedIndicies[category] ?? []
         let freeIndiciesInResignedSpace = freeIndicies.filter { $0 < currentRange.lowerBound + nItems }
         let numberOfDisplacedItems = (currentRange.lowerBound..<(currentRange.lowerBound + nItems)).count - freeIndiciesInResignedSpace.count
         let requiredSpace = numberOfDisplacedItems
@@ -141,7 +139,7 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
             if myIndex < sortedCategories.count - 1 {
                 recursiveFree(fist: requiredSpace, category: sortedCategories[myIndex + 1].key)
             } else {
-                buffer.append(contentsOf: Array(repeating: C.placeholder, count: requiredSpace))
+                buffer.append(contentsOf: Array(repeating: nil, count: requiredSpace))
             }
         }
 
@@ -149,15 +147,15 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         let additionalIndicies = Array(currentRange.upperBound..<targetRange.upperBound)
         var targetFreeIndicies = freeIndicies.filter { currentRange.lowerBound + nItems >= $0 } + additionalIndicies
 
-        for i in currentRange.lowerBound..<targetRange.lowerBound where buffer[i].isValid {
+        for i in currentRange.lowerBound..<targetRange.lowerBound where buffer[i] != nil {
             let newIndex = targetFreeIndicies.popLast()!
             buffer[newIndex] = buffer[i]
-            buffer[newIndex].entity?.relocated(component: C.self, to: newIndex)
-            buffer[i].entity = nil
+            buffer[newIndex]!.unownedEntity.relocated(component: C.self, to: newIndex)
+            buffer[i] = nil
         }
 
         self.category[category] = targetRange
-        self.categoryFriedIndicies[category] = targetFreeIndicies
+        self.categoryFreedIndicies[category] = targetFreeIndicies
     }
 
     private func unsafeMove(range: Range<Int>, toIndex: Int) {
@@ -173,28 +171,28 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         var firstFreeIndex: Int? = nil 
 
         for i in range {
-            if !buffer[i].isValid {
+            if buffer[i] == nil {
                 firstFreeIndex = min(firstFreeIndex ?? i, i)
                 continue
             }
 
             guard let freeIndex = firstFreeIndex else {
                 if updateAllLocations {
-                    buffer[i].entity?.relocated(component: C.self, to: i)
+                    buffer[i]!.unownedEntity.relocated(component: C.self, to: i)
                 }
                 continue
             }
 
             buffer[freeIndex] = buffer[i]
-            buffer[freeIndex].entity?.relocated(component: C.self, to: freeIndex)
-            buffer[i].entity = nil
+            buffer[freeIndex]!.unownedEntity.relocated(component: C.self, to: freeIndex)
+            buffer[i] = nil
             firstFreeIndex = firstFreeIndex.flatMap { $0 + 1 } ?? i
         }
 
         if let firstFreeIndex = firstFreeIndex, range.contains(firstFreeIndex) {
-            categoryFriedIndicies[category] = Array(firstFreeIndex..<range.endIndex).reversed()
+            categoryFreedIndicies[category] = Array(firstFreeIndex..<range.endIndex).reversed()
         } else {
-            categoryFriedIndicies[category] = nil
+            categoryFreedIndicies[category] = nil
         }
     }
 }

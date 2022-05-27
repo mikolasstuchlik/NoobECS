@@ -37,15 +37,22 @@ public final class Entity: Hashable {
 
     public func assign<C: Component>(component: C.Type, options: C.Store.StoreOptions, arguments: C.Store.StoredComponent.InitArguments) throws {
         let storage = dataManager.storage(for: C.self)
+        let newItem = StoreItem<C.Store.StoredComponent>(
+            unownedEntity: self, 
+            value: try C.Store.StoredComponent.init(arguments: arguments)
+        )
 
-        let oldIndex = index(of: C.self)
-        destroy(component: C.self)
-        let newIndex = try storage.allocInit(for: self, options: options, with: arguments)
-
-        if let oldIndex = oldIndex {
-            componentReferences[oldIndex].storage = newIndex
+        if let oldIndex = index(of: C.self) {
+            storage.destroy(at: componentReferences[oldIndex].storage)
+            componentReferences[oldIndex].storage = ComponentReference(
+                type: C.self, 
+                storage: try storage.store(item: newItem, with: options)
+            )
         } else {
-            componentReferences.append(ComponentReference(type: C.self, storage: newIndex))
+            componentReferences.append(ComponentReference(
+                type: C.self, 
+                storage: try storage.store(item: newItem, with: options)
+            ))
         }
     }
 

@@ -6,31 +6,29 @@ public final class VectorStorage<C: Component>: ComponentStore {
     public typealias StoredComponent = C
 
     public let type: OpaqueComponent.Type = C.self
-    public var buffer: [C] = []
+    public var buffer: [StoreItem<C>?] = []
 
     private(set) var freedIndicies: [Int] = []
 
     public init() { }
 
-    public func allocInit(for entity: Entity, options: StoreOptions, with arguments: StoredComponent.InitArguments) throws -> ComponentIdentifier {
-        let new = try C.init(entity: entity, arguments: arguments)
-
+    public func store(item: StoreItem<C>, with options: Void) throws -> Int {
         if let allocated = freedIndicies.popLast() {
-            buffer[allocated] = new
+            buffer[allocated] = item
             return allocated
         }
 
-        buffer.append(new)
+        buffer.append(item)
         return buffer.count - 1
     }
 
     public func access<R>(at identifier: inout Any, validityScope: (inout StoredComponent) throws -> R) rethrows -> R? {
-        try validityScope(&buffer[identifier as! ComponentIdentifier])
+        try validityScope(&buffer[identifier as! ComponentIdentifier]!.value)
     }
 
     public func destroy(at index: Int) {
         freedIndicies.append(index)
-        buffer[index].destroy()
-        buffer[index].entity = nil
+        buffer[index]?.value.destroy()
+        buffer[index] = nil
     }
 }

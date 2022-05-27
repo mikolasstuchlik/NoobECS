@@ -1,3 +1,6 @@
 # NoobECS
 
-A description of this package.
+TODO:
+ - Introduce tests for all stores
+ - Fix issues with class types as components
+ - Before releasing, fix also GameTest

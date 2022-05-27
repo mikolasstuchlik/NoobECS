@@ -14,6 +14,6 @@ let package = Package(
         .target(name: "NoobECSStores", dependencies: ["NoobECS"]),
         .testTarget(
             name: "NoobECSTests",
-            dependencies: ["NoobECS"]),
+            dependencies: ["NoobECSStores", "NoobECS"]),
     ]
 )
