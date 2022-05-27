@@ -14,8 +14,6 @@ private struct StructComponent: Component {
     ) {
         self.aValue = arguments
     }
-
-    func destroy() { }
 }
 
 private class ClassComponent: Component {
@@ -28,8 +26,6 @@ private class ClassComponent: Component {
     ) {
         self.aValue = arguments
     }
-
-    func destroy() { }
 }
 
 final class VectorStorageTests: XCTestCase {
