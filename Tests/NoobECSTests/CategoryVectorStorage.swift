@@ -3,7 +3,7 @@ import XCTest
 @testable import NoobECSStores
 
 private final class TestPool: Pool<Void, Void> { }
-extension Int: Category { }
+extension Int: NoobECSStores.Category { }
 
 private struct StructComponent: CategoryComponent {
     typealias Categories = Int
@@ -78,56 +78,56 @@ final class CategoryStorageTests: XCTestCase {
         XCTAssertEqual(store.buffer[3]!.value.aValue, 111)
     }
 
-    // func testStoreAndRemoveClass() throws {
-    //     let pool = TestPool()
-    //     let store = pool.storage(for: ClassComponent.self)
+    func testStoreAndRemoveClass() throws {
+        let pool = TestPool()
+        let store = pool.storage(for: ClassComponent.self)
 
-    //     let entity0 = Entity(dataManager: pool)
-    //     let entity1 = Entity(dataManager: pool)
-    //     let entity2 = Entity(dataManager: pool)
-    //     let entity3 = Entity(dataManager: pool)
+        let entity0 = Entity(dataManager: pool)
+        let entity1 = Entity(dataManager: pool)
+        let entity2 = Entity(dataManager: pool)
+        let entity3 = Entity(dataManager: pool)
 
-    //     try entity0.assign(component: ClassComponent.self, arguments: 100)
-    //     weak var comp0: ClassComponent? = entity0.access(component: ClassComponent.self) { $0 }
-    //     try entity1.assign(component: ClassComponent.self, arguments: 110)
-    //     weak var comp1: ClassComponent? = entity1.access(component: ClassComponent.self) { $0 }
-    //     try entity2.assign(component: ClassComponent.self, arguments: 120)
-    //     weak var comp2: ClassComponent? = entity2.access(component: ClassComponent.self) { $0 }
+        try entity0.assign(component: ClassComponent.self, options: 1, arguments: 100)
+        weak var comp0: ClassComponent? = entity0.access(component: ClassComponent.self) { $0 }
+        try entity1.assign(component: ClassComponent.self, options: 1, arguments: 110)
+        weak var comp1: ClassComponent? = entity1.access(component: ClassComponent.self) { $0 }
+        try entity2.assign(component: ClassComponent.self, options: 1, arguments: 120)
+        weak var comp2: ClassComponent? = entity2.access(component: ClassComponent.self) { $0 }
 
-    //     XCTAssertEqual(store.buffer.count, 3)
-    //     XCTAssertEqual(store.freedIndicies.count, 0)
+        XCTAssertEqual(store.buffer.count, 3)
+        XCTAssertNil(store.categoryFreedIndicies[1])
 
-    //     XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
-    //     XCTAssertEqual(store.buffer[1]!.value.aValue, 110)
-    //     XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
+        XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
+        XCTAssertEqual(store.buffer[1]!.value.aValue, 110)
+        XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
 
-    //     XCTAssertNotNil(comp0)
-    //     XCTAssertNotNil(comp1)
-    //     XCTAssertNotNil(comp2)
+        XCTAssertNotNil(comp0)
+        XCTAssertNotNil(comp1)
+        XCTAssertNotNil(comp2)
 
-    //     entity1.destroy(component: ClassComponent.self)
+        entity1.destroy(component: ClassComponent.self)
         
-    //     XCTAssertEqual(store.buffer.count, 3)
-    //     XCTAssertEqual(store.freedIndicies.count, 1)
-    //     XCTAssertEqual(store.freedIndicies.first, 1)
+        XCTAssertEqual(store.buffer.count, 3)
+        XCTAssertEqual(store.categoryFreedIndicies[1]!.count, 1)
+        XCTAssertEqual(store.categoryFreedIndicies[1]!.first, 1)
 
-    //     XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
-    //     XCTAssertNil(store.buffer[1])
-    //     XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
+        XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
+        XCTAssertNil(store.buffer[1])
+        XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
 
-    //     XCTAssertNotNil(comp0)
-    //     XCTAssertNil(comp1)
-    //     XCTAssertNotNil(comp2)
+        XCTAssertNotNil(comp0)
+        XCTAssertNil(comp1)
+        XCTAssertNotNil(comp2)
 
-    //     try entity3.assign(component: ClassComponent.self, arguments: 130)
-    //     try entity1.assign(component: ClassComponent.self, arguments: 111)
+        try entity3.assign(component: ClassComponent.self, options: 1, arguments: 130)
+        try entity1.assign(component: ClassComponent.self, options: 1, arguments: 111)
 
-    //     XCTAssertEqual(store.buffer.count, 4)
-    //     XCTAssertEqual(store.freedIndicies.count, 0)
+        XCTAssertEqual(store.buffer.count, 4)
+        XCTAssertEqual(store.categoryFreedIndicies[1]!.count, 0)
 
-    //     XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
-    //     XCTAssertEqual(store.buffer[1]!.value.aValue, 130)
-    //     XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
-    //     XCTAssertEqual(store.buffer[3]!.value.aValue, 111)
-    // }
+        XCTAssertEqual(store.buffer[0]!.value.aValue, 100)
+        XCTAssertEqual(store.buffer[1]!.value.aValue, 130)
+        XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
+        XCTAssertEqual(store.buffer[3]!.value.aValue, 111)
+    }
 }
