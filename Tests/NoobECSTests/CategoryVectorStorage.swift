@@ -204,4 +204,29 @@ final class CategoryStorageTests: XCTestCase {
             XCTAssert(store.category[item!.value.aValue]!.contains(index))
         }
     }
+
+    func testStructDestruct() throws {
+        var pool: TestPool! = TestPool()
+
+        pool.storage(for: StructComponent.self).initialize(
+            categories: [
+                2: 10,
+                0: 100
+            ],
+            reserve: 5
+        )
+
+        let insertItems = (
+            Array(repeating: 0, count: 100)
+            + Array(repeating: 1, count: 20)
+            + Array(repeating: 2, count: 3)
+        )
+
+        for i in insertItems.shuffled() {
+            let entity = Entity(dataManager: pool)
+            try entity.assign(component: StructComponent.self, options: i, arguments: i)
+        }
+
+        pool = nil
+    }
 }

@@ -181,6 +181,15 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
             numberOfDisplacedItems - (freeIndicies.count - freeIndiciesInResignedSpace.count)
         )
 
+        // Special case when category exists but is empty
+        guard currentRange.count != 0 else {
+            if myIndex < sortedCategories.count - 1 {
+                recursiveFree(fist: nItems, category: sortedCategories[myIndex + 1].key)
+            }
+            self.category[category] = (currentRange.lowerBound + nItems)..<(currentRange.upperBound + nItems)
+            return
+        }
+
         // After this if, we assume that there is enough space to write to
         if requiredSpace > 0 {
             if myIndex < sortedCategories.count - 1 {
