@@ -6,6 +6,30 @@ public protocol CategoryComponent: Component {
     associatedtype Categories: Category
 }
 
+#if TESTING
+extension Collection where Element == Range<Int>, Index == Int {
+    var isStrictContinuation: Bool {
+        for (prevIndex, item) in self.dropFirst().enumerated() {
+            guard self[prevIndex].upperBound == item.lowerBound else {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    var isContinuation: Bool {
+        for (prevIndex, item) in self.dropFirst().enumerated() {
+            guard self[prevIndex].upperBound <= item.lowerBound else {
+                return false
+            }
+        }
+
+        return true
+    }
+}
+#endif
+
 public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
     public typealias StoreOptions = C.Categories
@@ -14,7 +38,15 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
     public let type: OpaqueComponent.Type = C.self
     public var buffer: [StoreItem<C>?] = []
+#if TESTING 
+    public var category: [C.Categories: Range<Int>] = [:] {
+        didSet {
+            assert(self.category.sorted { $0.key < $1.key }.map(\.value).isContinuation)
+        }
+    }
+#else
     public var category: [C.Categories: Range<Int>] = [:]
+#endif
 
     private(set) var categoryFreedIndicies: [C.Categories: [Int]] = [:]
 
@@ -22,6 +54,12 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
 
 
     public func store(item: StoreItem<C>, with options: C.Categories) throws -> Int {
+#if TESTING
+        defer {
+            assert(self.category.sorted { $0.key < $1.key }.map(\.value).isStrictContinuation)
+        }
+#endif
+
         if let allocated = categoryFreedIndicies[options]?.popLast() {
             buffer[allocated] = item
             return allocated
@@ -47,14 +85,23 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         }
 
         // At this point we know how will the new category look like, we shall insert it and move space
-        self.category[options] = newRange
         if myIndex == sortedCategories.count - 1 {
+            self.category[options] = newRange
             buffer.append(item)
             return buffer.count - 1
         } else {
             recursiveFree(fist: 1, category: sortedCategories[myIndex + 1].key)
-            buffer[newRange.upperBound - 1] = item
-            return newRange.upperBound - 1
+            self.category[options] = newRange
+            let newIndex = newRange.upperBound - 1
+
+            if newIndex >= buffer.count {
+                assert(newIndex == buffer.count, "Failed to determine correct new index!")
+                buffer.append(item)
+                return buffer.count - 1
+            }
+
+            buffer[newIndex] = item
+            return newIndex
         }
     }
 
@@ -129,10 +176,10 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         let freeIndicies = categoryFreedIndicies[category] ?? []
         let freeIndiciesInResignedSpace = freeIndicies.filter { $0 < currentRange.lowerBound + nItems }
         let numberOfDisplacedItems = (currentRange.lowerBound..<(currentRange.lowerBound + nItems)).count - freeIndiciesInResignedSpace.count
-        let requiredSpace = numberOfDisplacedItems
-            - (freeIndicies.count - freeIndiciesInResignedSpace.count)
-            
-             
+        let requiredSpace = max(
+            0,
+            numberOfDisplacedItems - (freeIndicies.count - freeIndiciesInResignedSpace.count)
+        )
 
         // After this if, we assume that there is enough space to write to
         if requiredSpace > 0 {
@@ -143,9 +190,9 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
             }
         }
 
-        let targetRange = (currentRange.lowerBound + nItems)..<(currentRange.upperBound + nItems)
+        let targetRange = (currentRange.lowerBound + nItems)..<(currentRange.upperBound + requiredSpace)
         let additionalIndicies = Array(currentRange.upperBound..<targetRange.upperBound)
-        var targetFreeIndicies = freeIndicies.filter { currentRange.lowerBound + nItems >= $0 } + additionalIndicies
+        var targetFreeIndicies = freeIndicies.filter { currentRange.lowerBound + nItems <= $0 } + additionalIndicies
 
         for i in currentRange.lowerBound..<targetRange.lowerBound where buffer[i] != nil {
             let newIndex = targetFreeIndicies.popLast()!

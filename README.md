@@ -13,3 +13,4 @@ TODO:
  - Add more tests that would introduce more complex scenarios
  - Add documentation
  - Release version 0.0.1
+ - Fix issue with Category Vector: insertion does not work

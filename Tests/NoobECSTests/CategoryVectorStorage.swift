@@ -35,6 +35,18 @@ private class ClassComponent: CategoryComponent {
     func destroy() { }
 }
 
+extension Collection where Element == Range<Int>, Index == Int {
+    var isStrictContinuation: Bool {
+        for (prevIndex, item) in self.dropFirst().enumerated() {
+            guard self[prevIndex].upperBound == item.lowerBound else {
+                return false
+            }
+        }
+
+        return true
+    }
+}
+
 final class CategoryStorageTests: XCTestCase {
     func testStoreAndRemoveStruct() throws {
         let pool = TestPool()
@@ -129,5 +141,67 @@ final class CategoryStorageTests: XCTestCase {
         XCTAssertEqual(store.buffer[1]!.value.aValue, 130)
         XCTAssertEqual(store.buffer[2]!.value.aValue, 120)
         XCTAssertEqual(store.buffer[3]!.value.aValue, 111)
+    }
+
+    func testStructOrdering() throws {
+        let pool = TestPool()
+        let store = pool.storage(for: StructComponent.self)
+
+        let insertItems = (0..<100).map { $0 % 10 }
+
+        for i in insertItems.shuffled() {
+            let entity = Entity(dataManager: pool)
+            try entity.assign(component: StructComponent.self, options: i, arguments: i)
+        }
+
+        for (index, item) in store.buffer.enumerated() {
+            XCTAssert(store.category[item!.value.aValue]!.contains(index))
+        }
+    }
+
+    func testStructReserve() throws {
+        let pool = TestPool()
+        let store = pool.storage(for: StructComponent.self)
+
+        store.initialize(
+            categories: Dictionary( (0..<5).map { ($0, 5) }) { $1 }, 
+            reserve: 5
+        )
+
+        XCTAssert(store.buffer.count == 25)
+        XCTAssert(store.buffer.allSatisfy { $0 == nil })
+        XCTAssert(store.category.sorted { $0.key < $1.key }.map(\.value).isStrictContinuation)
+
+        store.initialize(
+            categories: Dictionary( (5..<10).map { ($0, 5) }) { $1 }, 
+            reserve: 5
+        )
+
+        XCTAssert(store.buffer.count == 50)
+        XCTAssert(store.buffer.allSatisfy { $0 == nil })
+        XCTAssert(store.category.sorted { $0.key < $1.key }.map(\.value).isStrictContinuation)
+
+        let insertItems = (0..<100).map { $0 % 10 }
+
+        for i in insertItems.shuffled() {
+            let entity = Entity(dataManager: pool)
+            try entity.assign(component: StructComponent.self, options: i, arguments: i)
+            
+            if !store.category.sorted { $0.key < $1.key }.map(\.value).isStrictContinuation {
+                print("first")
+            }
+            XCTAssert(store.category.sorted { $0.key < $1.key }.map(\.value).isStrictContinuation)
+            XCTAssertEqual(
+                store.category.sorted { $0.key < $1.key }.map(\.value.upperBound).last!, 
+                store.buffer.count    
+            )
+            for (index, item) in store.buffer.enumerated() where item != nil {
+                XCTAssert(store.category[item!.value.aValue]!.contains(index))
+            }
+        }
+
+        for (index, item) in store.buffer.enumerated() {
+            XCTAssert(store.category[item!.value.aValue]!.contains(index))
+        }
     }
 }
