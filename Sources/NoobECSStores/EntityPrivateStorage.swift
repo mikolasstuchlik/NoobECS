@@ -1,5 +1,10 @@
 import NoobECS
 
+/// This store does not store any Components. The Components are stored in their
+/// Entities, taking advantage of the type-ereased nature of the Identifier.
+/// 
+/// Use this store for Components, that are not read frequently and don't need 
+/// their own storage.
 public final class EntityPrivateStorage<C: Component>: ComponentStore {
     public typealias StoreOptions = Void
     public typealias ComponentIdentifier = C

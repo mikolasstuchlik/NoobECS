@@ -1,5 +1,13 @@
 import NoobECS
 
+/// Vector storage stores the Components in a simple Swift Array called `buffer`. The 
+/// `buffer` itself should be never copied. 
+/// 
+/// The storage is designed to Components, that won't be destroyed often, so fragmentation
+/// would not be an issue.
+/// 
+/// If an instance of Component is destroyed, the void space left after it is stored in 
+/// array of `freedIndicies` and assigned to an instance of new Component when needed.
 public final class VectorStorage<C: Component>: ComponentStore {
     public typealias StoreOptions = Void
     public typealias ComponentIdentifier = Int
@@ -8,7 +16,7 @@ public final class VectorStorage<C: Component>: ComponentStore {
     public let type: OpaqueComponent.Type = C.self
     public var buffer: [StoreItem<C>?] = []
 
-    private(set) var freedIndicies: [Int] = []
+    private(set) public var freedIndicies: [Int] = []
 
     public init() { }
 

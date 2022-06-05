@@ -1,57 +1,37 @@
 import NoobECS
 
-public protocol Category: Hashable, Comparable {}
-
+/// Category Component is a specific type of Component, that is designed for use with
+/// `CategoryVectorStorage`. It needs a `Category` type, that is used to store
+/// the item in the Store in chunks of items of the same Category.
 public protocol CategoryComponent: Component {
-    associatedtype Categories: Category
+    /// Hashable and Comparable type of the Category associated with this Component.
+    associatedtype Categories: Hashable & Comparable
 }
 
-#if TESTING
-extension Collection where Element == Range<Int>, Index == Int {
-    var isStrictContinuation: Bool {
-        for (prevIndex, item) in self.dropFirst().enumerated() {
-            guard self[prevIndex].upperBound == item.lowerBound else {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    var isContinuation: Bool {
-        for (prevIndex, item) in self.dropFirst().enumerated() {
-            guard self[prevIndex].upperBound <= item.lowerBound else {
-                return false
-            }
-        }
-
-        return true
-    }
-}
-#endif
-
+/// Category Vector storage stores instances of Component grouped into chunks of the same
+/// Category.
 public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
-
     public typealias StoreOptions = C.Categories
     public typealias ComponentIdentifier = Int
     public typealias StoredComponent = C
 
     public let type: OpaqueComponent.Type = C.self
     public var buffer: [StoreItem<C>?] = []
-#if TESTING 
-    public var category: [C.Categories: Range<Int>] = [:] {
+
+#if !TESTING 
+    /// The indicies of various categories existing in this Store.
+    private(set) public var category: [C.Categories: Range<Int>] = [:]
+#else
+    private(set) public var category: [C.Categories: Range<Int>] = [:] {
         didSet {
             assert(self.category.sorted { $0.key < $1.key }.map(\.value).isContinuation)
         }
     }
-#else
-    public var category: [C.Categories: Range<Int>] = [:]
 #endif
 
-    private(set) var categoryFreedIndicies: [C.Categories: [Int]] = [:]
+    private(set) public var categoryFreedIndicies: [C.Categories: [Int]] = [:]
 
     public init() { }
-
 
     public func store(item: StoreItem<C>, with options: C.Categories) throws -> Int {
 #if TESTING
@@ -109,6 +89,15 @@ public final class CategoryVectorStorage<C: CategoryComponent>: ComponentStore {
         try validityScope(&buffer[identifier as! ComponentIdentifier]!.value)
     }
 
+    /// Ensures, that certain minimal space in the buffer is reserved for each category and in memory
+    /// overall. Use this method before large number of predictable store operations is performed to avoid
+    /// excessive buffer enlargements.
+    /// - Parameters:
+    ///   - categories: Dictionary that specifies minimal amount of space for each of listed categories. This space if 
+    /// filled with `nil` values.
+    ///   - tail: Tail is a minimal space, that whould be reserved in the buffer on top of items already in it.
+    ///   - addToExisting: It `true`, the additional space requested in the `categories` argument will be added on top
+    /// of the space already allocated for each category.
     public func initialize(categories: [C.Categories: Int], reserve tail: Int, addToExisting: Bool = false) {
         var spaceToInitialize: [C.Categories: Int] = categories
         if !addToExisting {

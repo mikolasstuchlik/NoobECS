@@ -28,6 +28,9 @@ public struct StoreItem<T: Component> {
 /// 
 /// You are encouraged to use any collection (Array, R-Tree, ...) that fits your use
 /// case the best. Some stores are provided in the `NoobECSStores` module.
+/// 
+/// The Component Store is absolutely encouraged to expose it's internal implementation
+/// details and buffers, so the Systems using it would increase their performance.
 public protocol ComponentStore: OpaqueComponentStore {
     /// Options, that are needed when an instance of compoent is being stored in order to provide 
     /// better efficiency.
