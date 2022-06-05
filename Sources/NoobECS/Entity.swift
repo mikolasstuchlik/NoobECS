@@ -5,6 +5,11 @@ import Foundation
 /// Entity is responsible for keeping track of Components associated with it.
 /// Entity has unowned reference to it's data manager which it should never outlive. 
 /// You should never store any strong reference that may outlive the dataManager.
+///
+/// The identifier of an instance of Entity is the memory address. It does not ensure
+/// uniqueness in a long-running application, but it's good-enough solution with interesting
+/// side effects. If the reference to the Entity is stored as an identifier, it should be stored
+/// as an unowned(unsafe) reference.
 public final class Entity: Hashable {
 
     /// Container used to store references to individual components.
@@ -12,6 +17,10 @@ public final class Entity: Hashable {
         /// The type of the component.
         let type: OpaqueComponent.Type
         /// Opaque identifier of the component. Type of identifier completely depends on the Component.
+        /// 
+        /// Identifier is of type Any. This implies, that there is 3-pointer wide buffer inline and an 
+        /// ISA pointer. If an identifier is a value-type that is more than 3 pointers in size, there is 
+        /// a mandatory heap allocation.
         var identifier: Any
     }
 
@@ -101,8 +110,8 @@ public final class Entity: Hashable {
     }
 
     /// Destroys 
-    /// - Parameter component: 
-    /// - Returns: 
+    /// - Parameter component: Type of the component that should be destroyed.
+    /// - Returns: `true` if a component was destroyed.
     @discardableResult
     public func destroy<C: Component>(component: C.Type) -> Bool {
         guard let index = index(of: C.self) else {
@@ -114,6 +123,10 @@ public final class Entity: Hashable {
         return true
     }
 
+    /// Call this method, if the location of a component in a component store has changed.
+    /// - Parameters:
+    ///   - component: The type of the component. 
+    ///   - newIndex: The new index of the component.
     public func relocated<C: Component>(component: C.Type, to newIndex: Any) {
         guard let index = index(of: C.self) else {
             return
@@ -126,6 +139,8 @@ public final class Entity: Hashable {
         componentReferences.enumerated().first { $1.type == C.self }?.offset
     }
 
+    /// When intity is deallocated, it needs to remove all of the components that belong to it.
+    /// Otherwise unowned(unsafe) pointer to the entity would became dangling pointer.
     deinit {
         componentReferences.forEach { 
             dataManager.destroy(opaque: $0.type, at: $0.identifier)
