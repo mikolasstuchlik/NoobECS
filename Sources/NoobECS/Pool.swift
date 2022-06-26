@@ -9,7 +9,7 @@
 /// It provides guidance on how the ECS is envisioned to work.
 open class Pool<UpdateContext, RenderContext>: LoopItem, EntityComponentDataManager {
     open var systems: [System<UpdateContext, RenderContext>] = []
-    open var entities: Set<Entity> = []
+    open var entities: [ObjectIdentifier: Entity] = [:]
     open var stores: [OpaqueComponentStore] = []
 
     public init() {}

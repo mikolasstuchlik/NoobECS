@@ -3,7 +3,6 @@ import XCTest
 @testable import NoobECSStores
 
 private final class TestPool: Pool<Void, Void> { }
-extension Int: NoobECSStores.Category { }
 
 private struct StructComponent: CategoryComponent {
     typealias Categories = Int

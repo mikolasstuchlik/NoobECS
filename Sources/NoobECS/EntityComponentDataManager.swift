@@ -8,7 +8,7 @@ public protocol EntityComponentDataManager: AnyObject {
     /// to remove it from this collection. The Entity might live after it is removed
     /// from the entity list for convenience, but it must be guaranteed, that the entity
     /// does not outlive the Data Manager associated with it.
-    var entities: Set<Entity> { get set }
+    var entities: [ObjectIdentifier: Entity] { get set }
     /// Storages for Components associated with the Entities stored in this Data Manager.
     var stores: [OpaqueComponentStore] { get set }
 
