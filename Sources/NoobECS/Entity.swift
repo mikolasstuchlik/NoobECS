@@ -10,7 +10,7 @@ import Foundation
 /// uniqueness in a long-running application, but it's good-enough solution with interesting
 /// side effects. If the reference to the Entity is stored as an identifier, it should be stored
 /// as an unowned(unsafe) reference.
-public final class Entity {
+public final class Entity: Hashable {
 
     /// Container used to store references to individual components.
     public struct ComponentReference {
@@ -44,6 +44,14 @@ public final class Entity {
         self.dataManager = dataManager
         self.developerLabel = developerLabel
         dataManager.entities[ObjectIdentifier(self)] = self
+    }
+
+    public static func == (lhs: Entity, rhs: Entity) -> Bool {
+        lhs === rhs
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        ObjectIdentifier(self).hash(into: &hasher)
     }
 
     /// Test, whether entity has a reference to following component.
