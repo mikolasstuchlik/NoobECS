@@ -15,13 +15,13 @@ public final class Entity {
     /// Container used to store references to individual components.
     public struct ComponentReference {
         /// The type of the component.
-        let type: OpaqueComponent.Type
+        public let type: OpaqueComponent.Type
         /// Opaque identifier of the component. Type of identifier completely depends on the Component.
         /// 
         /// Identifier is of type Any. This implies, that there is 3-pointer wide buffer inline and an 
         /// ISA pointer. If an identifier is a value-type that is more than 3 pointers in size, there is 
         /// a mandatory heap allocation.
-        var identifier: Any
+        public var identifier: Any
     }
 
     /// Unowned reference to data manager which manages this entity.
