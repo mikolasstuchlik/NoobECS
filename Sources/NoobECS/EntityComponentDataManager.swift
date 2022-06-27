@@ -21,6 +21,11 @@ public protocol EntityComponentDataManager: AnyObject {
     ///   - component: Metatype of the Component to destroy.
     ///   - index: Index of the Component in Store associated with it.
     func destroy(opaque component: OpaqueComponent.Type, at index: Any)
+
+    /// Gets called by entity destructor before it's components are unset
+    /// - Parameters:
+    ///   - entity: The entity being destroyed
+    func willDestroy(entity: Entity)
 }
 
 public extension EntityComponentDataManager {
@@ -38,4 +43,6 @@ public extension EntityComponentDataManager {
             store.destroy(at: index)
         }
     }
+
+    func willDestroy(entity: Entity) { }
 }

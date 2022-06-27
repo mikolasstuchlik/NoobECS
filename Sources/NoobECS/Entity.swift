@@ -142,6 +142,7 @@ public final class Entity: Hashable {
     /// When intity is deallocated, it needs to remove all of the components that belong to it.
     /// Otherwise unowned(unsafe) pointer to the entity would became dangling pointer.
     deinit {
+        dataManager.willDestroy(entity: self)
         componentReferences.forEach { 
             dataManager.destroy(opaque: $0.type, at: $0.identifier)
         }
