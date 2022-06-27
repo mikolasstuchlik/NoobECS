@@ -43,6 +43,4 @@ public extension EntityComponentDataManager {
             store.destroy(at: index)
         }
     }
-
-    func willDestroy(entity: Entity) { }
 }

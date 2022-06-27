@@ -21,4 +21,6 @@ open class Pool<UpdateContext, RenderContext>: LoopItem, EntityComponentDataMana
     open func render(with context: RenderContext) throws {
         try systems.forEach { try $0.render(with: context) }
     }
+
+    open func willDestroy(entity: Entity) { }
 }
